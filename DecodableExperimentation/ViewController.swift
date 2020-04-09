@@ -7,10 +7,11 @@ import SnapKit
 import Foundation
 
 enum Decoding: String, CaseIterable {
-  case dictionaryParsing = "iterating dictionary"
-  case jsonDecoder = "JSON decoder"
-  case dictionaryDecoder = "Dictionary decoder"
-  case binaryDecoder = "Binary decoder"
+  case dictionaryParsing = "JSON -> Dictionary -> dictionary walkthrough"
+  case jsonDecoder = "Codable - JSON decoder"
+  case dictionaryDecoder = "Codable - Dictionary decoder"
+  case binaryDecoder = "(SwiftProtobuf) Binary decoder"
+  case binaryJSONDecoder = "(SwiftProtobuf) JSON decoder"
 }
 
 class ViewController: UIViewController {
@@ -40,6 +41,10 @@ class ViewController: UIViewController {
     button.setTitle("Decode", for: .normal)
     buttonMessage.text = "(don't double press before results are displayed)"
     buttonMessage.textAlignment = .center
+
+    buttonMessage.isUserInteractionEnabled = false
+    dataSizeView.isUserInteractionEnabled = false
+    resultView.isUserInteractionEnabled = false
 
     let buttonTap = UITapGestureRecognizer(target: self, action: #selector(didTapButton))
     button.addGestureRecognizer(buttonTap)
@@ -75,7 +80,7 @@ binary: \(formatSize(binaryData)) (\(formatSize(try! (binaryData as NSData).comp
     }
 
     resultView.snp.makeConstraints { maker in
-      maker.width.equalTo(view.snp.width).offset(-60)
+      maker.width.equalTo(view.snp.width).offset(-20)
       maker.height.equalTo(300)
       maker.centerX.equalTo(view.snp.centerX)
       maker.topMargin.equalTo(buttonMessage.snp.bottom).offset(10)
@@ -115,6 +120,12 @@ binary: \(formatSize(binaryData)) (\(formatSize(try! (binaryData as NSData).comp
     }
     latencies[.binaryDecoder] = Date().timeIntervalSince(t0)
 
+    t0 = Date()
+    for _ in 0..<n {
+      let value = try! BinaryType(jsonUTF8Data: data)
+    }
+    latencies[.binaryJSONDecoder] = Date().timeIntervalSince(t0)
+
     displayResult()
 
     isDecoding = false
@@ -142,12 +153,12 @@ binary: \(formatSize(binaryData)) (\(formatSize(try! (binaryData as NSData).comp
     }
     var text = """
     Decoding results:
-        - iterating dictionary: \(Double(baselineLatency * 1000).withDecinal(2)) ms
+      - \(Decoding.dictionaryParsing.rawValue): \(Double(baselineLatency * 1000).withDecinal(2)) ms
     """
 
     Decoding.allCases.filter { $0 != .dictionaryParsing }.forEach { decoding in
       if let latency = latencies[decoding] {
-        text = text.appending("\n    - with \(decoding): \(Double(latency * 1000).withDecinal(2)) ms (\(delta(baseline: baselineLatency, newValue: latency)))")
+        text = text.appending("\n  - with \(decoding.rawValue): \(Double(latency * 1000).withDecinal(2)) ms (\(delta(baseline: baselineLatency, newValue: latency)))")
       }
     }
     self.resultView.text = text
